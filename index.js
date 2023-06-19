@@ -10,7 +10,7 @@ app.use(express.json())
 app.use(cors())
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const uri = `mongodb+srv://${process.env.DBUser}:${process.env.DBPass}@cluster0.qmhrwse.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -32,7 +32,55 @@ async function run() {
 
 
         app.get('/posts', async (req, res) => {
-            const result = await postsCollection.find().toArray()
+            const type = req.query.type
+            const beds = req.query.beds
+            const baths = req.query.baths
+            const otherFacilities = req.query.otherFacilities
+
+
+            const query = {}
+
+            if (!type && !beds && !baths && !otherFacilities) {
+                const result = await postsCollection.find().limit(12).toArray()
+                res.send(result)
+            }
+            else {
+                if (type) {
+                    query.type = type
+                    console.log(type);
+                }
+
+                if (beds && Array.isArray(beds)) {
+                    query.rooms = { $in: beds.map(Number) };
+                }
+
+                if (baths && Array.isArray(baths)) {
+                    query.bathrooms = { $in: baths.map(Number) };
+                }
+
+                if (otherFacilities) {
+                    if (otherFacilities.includes('lift') && otherFacilities.includes('garage')) {
+                        query.hasLift = true
+                        query.hasParking = true
+                    }
+                    else if (otherFacilities.includes('lift')) {
+                        query.hasLift = true
+                    }
+                    else if (otherFacilities.includes('garage')) {
+                        query.hasParking = true
+                    }
+                }
+                console.log(query);
+
+                const result = await postsCollection.find(query).limit(12).toArray()
+                res.send(result)
+            }
+
+        })
+
+        app.get('/post/:id', async (req, res) => {
+            const id = req.params.id;
+            const result = await postsCollection.findOne({ _id: new ObjectId(id) })
             res.send(result)
         })
 
